@@ -1,10 +1,20 @@
 from fastapi import FastAPI
-from fastmcp import FastMCP
+from mcp_sdk.server import FastMCP
 import httpx
 from typing import Any
 
+# Step 1: Create FastAPI app
 app = FastAPI()
-mcp = FastMCP(app=app, name="weather")  # ✅ FIXED: app=app, not positional
+
+# Step 2: Create FastMCP instance
+mcp = FastMCP(name="weather")  # Just 'name' now, no 'app'
+
+# Step 3: Mount MCP router into FastAPI
+app.include_router(mcp.router, prefix="/api")
+
+# -----------------------
+# Weather Tools
+# -----------------------
 
 NWS_API_BASE = "https://api.weather.gov"
 USER_AGENT = "azure-mcp-demo/1.0"
@@ -33,25 +43,37 @@ Description: {props.get('description', 'No description available')}
 
 @mcp.tool()
 async def get_alerts(area: str) -> str:
-    """
-    Get active weather alerts for a given US state (2-letter code).
-    Example: "TX" for Texas
-    """
+    """Get active weather alerts by 2-letter state code (e.g., TX, NY)."""
     url = f"{NWS_API_BASE}/alerts/active?area={area}"
     data = await make_nws_request(url)
-    if not data or 'features' not in data or not data['features']:
+    if not data or 'features' not in data:
         return "No active alerts found or unable to retrieve data."
     alerts = [format_alert(f) for f in data['features']]
     return "\n\n".join(alerts)
 
 @mcp.tool()
-async def hello(name: str) -> str:
-    """
-    Return a simple greeting.
-    """
-    return f"Hello, {name}! 👋"
+async def get_forecast(location: str) -> str:
+    """Get forecast by lat,long. Example: '38.8894,-77.0352' for Washington, DC."""
+    try:
+        point_url = f"{NWS_API_BASE}/points/{location}"
+        headers = {"User-Agent": USER_AGENT}
+        async with httpx.AsyncClient() as client:
+            point_resp = await client.get(point_url, headers=headers)
+            point_resp.raise_for_status()
+            forecast_url = point_resp.json()["properties"]["forecast"]
 
-# For local development
+            forecast_resp = await client.get(forecast_url, headers=headers)
+            forecast_resp.raise_for_status()
+            forecast_data = forecast_resp.json()
+
+            periods = forecast_data["properties"]["periods"]
+            return "\n".join(f"{p['name']}: {p['detailedForecast']}" for p in periods[:3])
+    except Exception as e:
+        return f"Error retrieving forecast: {e}"
+
+# -----------------------
+# Optional: For local testing
+# -----------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
