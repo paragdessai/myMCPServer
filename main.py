@@ -1,14 +1,15 @@
-from fastapi import FastAPI
 from mcp.server.fastmcp import FastMCP
 import httpx
 from typing import Any
 
-app = FastAPI()
+# Initialize MCP server
 mcp = FastMCP("weather-alerts")
 
+# Constants
 NWS_API_BASE = "https://api.weather.gov"
 USER_AGENT = "azure-mcp-demo/1.0"
 
+# Helper function to make HTTP request to weather.gov
 async def make_nws_request(url: str) -> dict[str, Any] | None:
     headers = {
         "User-Agent": USER_AGENT,
@@ -22,6 +23,7 @@ async def make_nws_request(url: str) -> dict[str, Any] | None:
         except Exception:
             return None
 
+# Format weather alert nicely
 def format_alert(feature: dict) -> str:
     props = feature["properties"]
     return f"""
@@ -31,6 +33,7 @@ Severity: {props.get('severity', 'Unknown')}
 Description: {props.get('description', 'No description available')}
 """
 
+# Tool: Get active weather alerts by state
 @mcp.tool()
 async def get_alerts(area: str) -> str:
     url = f"{NWS_API_BASE}/alerts/active?area={area}"
@@ -40,6 +43,7 @@ async def get_alerts(area: str) -> str:
     alerts = [format_alert(f) for f in data['features']]
     return "\n\n".join(alerts)
 
+# Tool: Get 3-part forecast by lat/lng
 @mcp.tool()
 async def get_forecast(location: str) -> str:
     """
@@ -67,8 +71,10 @@ async def get_forecast(location: str) -> str:
     except Exception as e:
         return f"Error retrieving forecast: {e}"
 
-app.include_router(mcp.router, prefix="/api")
+# Let MCP provide the FastAPI app
+app = mcp.app
 
+# For local testing
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
