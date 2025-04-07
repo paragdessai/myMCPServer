@@ -1,4 +1,4 @@
 fastapi
-httpx
 uvicorn
-git+https://github.com/jlowin/fastmcp.git
+httpx
+mcp-sdk @ git+https://github.com/jlowin/fastmcp.git#subdirectory=mcp_sdk
