@@ -1,4 +1,4 @@
 fastapi
-uvicorn
 httpx
-mcp[cli]
+uvicorn
+git+https://github.com/jlowin/fastmcp.git
