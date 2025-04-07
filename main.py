@@ -1,11 +1,14 @@
-from mcp.server.fastmcp import FastMCP
+from fastapi import FastAPI
+from fastmcp import FastMCP
 import httpx
 from typing import Any
 
-mcp = FastMCP("weather-alerts")
+app = FastAPI()
+mcp = FastMCP(app, name="weather")
 
 NWS_API_BASE = "https://api.weather.gov"
 USER_AGENT = "azure-mcp-demo/1.0"
+
 
 async def make_nws_request(url: str) -> dict[str, Any] | None:
     headers = {
@@ -20,6 +23,7 @@ async def make_nws_request(url: str) -> dict[str, Any] | None:
         except Exception:
             return None
 
+
 def format_alert(feature: dict) -> str:
     props = feature["properties"]
     return f"""
@@ -29,38 +33,30 @@ Severity: {props.get('severity', 'Unknown')}
 Description: {props.get('description', 'No description available')}
 """
 
+
 @mcp.tool()
 async def get_alerts(area: str) -> str:
+    """
+    Get active weather alerts for a given US state (2-letter code).
+    Example: "TX" for Texas
+    """
     url = f"{NWS_API_BASE}/alerts/active?area={area}"
     data = await make_nws_request(url)
-    if not data or 'features' not in data:
+    if not data or 'features' not in data or not data['features']:
         return "No active alerts found or unable to retrieve data."
     alerts = [format_alert(f) for f in data['features']]
     return "\n\n".join(alerts)
 
+
 @mcp.tool()
-async def get_forecast(location: str) -> str:
-    try:
-        point_url = f"https://api.weather.gov/points/{location}"
-        headers = {"User-Agent": USER_AGENT}
+async def hello(name: str) -> str:
+    """
+    Return a simple greeting.
+    """
+    return f"Hello, {name}! 👋"
 
-        async with httpx.AsyncClient() as client:
-            point_resp = await client.get(point_url, headers=headers)
-            point_resp.raise_for_status()
-            point_data = point_resp.json()
 
-            forecast_url = point_data["properties"]["forecast"]
-            forecast_resp = await client.get(forecast_url, headers=headers)
-            forecast_resp.raise_for_status()
-            forecast_data = forecast_resp.json()
-
-            periods = forecast_data["properties"]["periods"]
-            forecast_text = "\n".join([f"{p['name']}: {p['detailedForecast']}" for p in periods[:3]])
-
-            return forecast_text
-    except Exception as e:
-        return f"Error retrieving forecast: {e}"
-
-# ✅ Correct server launch for jlowin/fastmcp
+# Azure runs this with gunicorn, but you can run locally for testing
 if __name__ == "__main__":
-    mcp.serve()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
