@@ -4,11 +4,10 @@ import httpx
 from typing import Any
 
 app = FastAPI()
-mcp = FastMCP(app, name="weather")
+mcp = FastMCP(app=app, name="weather")  # ✅ FIXED: app=app, not positional
 
 NWS_API_BASE = "https://api.weather.gov"
 USER_AGENT = "azure-mcp-demo/1.0"
-
 
 async def make_nws_request(url: str) -> dict[str, Any] | None:
     headers = {
@@ -23,7 +22,6 @@ async def make_nws_request(url: str) -> dict[str, Any] | None:
         except Exception:
             return None
 
-
 def format_alert(feature: dict) -> str:
     props = feature["properties"]
     return f"""
@@ -32,7 +30,6 @@ Area: {props.get('areaDesc', 'Unknown')}
 Severity: {props.get('severity', 'Unknown')}
 Description: {props.get('description', 'No description available')}
 """
-
 
 @mcp.tool()
 async def get_alerts(area: str) -> str:
@@ -47,7 +44,6 @@ async def get_alerts(area: str) -> str:
     alerts = [format_alert(f) for f in data['features']]
     return "\n\n".join(alerts)
 
-
 @mcp.tool()
 async def hello(name: str) -> str:
     """
@@ -55,8 +51,7 @@ async def hello(name: str) -> str:
     """
     return f"Hello, {name}! 👋"
 
-
-# Azure runs this with gunicorn, but you can run locally for testing
+# For local development
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
