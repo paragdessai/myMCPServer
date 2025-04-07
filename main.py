@@ -31,7 +31,7 @@ Severity: {props.get('severity', 'Unknown')}
 Description: {props.get('description', 'No description available')}
 """
 
-@mcp.tool
+@mcp.tool()
 async def get_alerts(area: str) -> str:
     url = f"{NWS_API_BASE}/alerts/active?area={area}"
     data = await make_nws_request(url)
@@ -40,8 +40,7 @@ async def get_alerts(area: str) -> str:
     alerts = [format_alert(f) for f in data['features']]
     return "\n\n".join(alerts)
 
-
-@mcp.tool
+@mcp.tool()
 async def get_forecast(location: str) -> str:
     """
     Retrieve weather forecast for a given location (latitude,longitude).
