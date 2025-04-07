@@ -1,9 +1,7 @@
-from fastapi import FastAPI
 from mcp.server.fastmcp import FastMCP
 import httpx
 from typing import Any
 
-app = FastAPI()
 mcp = FastMCP("weather-alerts")
 
 NWS_API_BASE = "https://api.weather.gov"
@@ -42,10 +40,6 @@ async def get_alerts(area: str) -> str:
 
 @mcp.tool()
 async def get_forecast(location: str) -> str:
-    """
-    Retrieve weather forecast for a given location (latitude,longitude).
-    Example: "38.8894,-77.0352" (Washington, DC)
-    """
     try:
         point_url = f"https://api.weather.gov/points/{location}"
         headers = {"User-Agent": USER_AGENT}
@@ -67,9 +61,6 @@ async def get_forecast(location: str) -> str:
     except Exception as e:
         return f"Error retrieving forecast: {e}"
 
-# ✅ The correct, compatible way
-app.include_router(mcp.router, prefix="/api")
-
+# ✅ Correct server launch for jlowin/fastmcp
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    mcp.serve()
